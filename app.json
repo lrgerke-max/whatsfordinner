@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Kitchen Memory",
+    "slug": "kitchen-memory",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "kitchenmemory",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FBF7F2"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kitchenmemory.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kitchen Memory uses your camera to record a short kitchen tour so we can remember what food you have.",
+        "NSMicrophoneUsageDescription": "We record audio along with your kitchen tour video (you can talk through what you see).",
+        "NSPhotoLibraryUsageDescription": "Kitchen Memory can use a kitchen tour video from your photo library instead of recording a new one."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FBF7F2",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kitchenmemory.app",
+      "permissions": ["CAMERA", "RECORD_AUDIO", "READ_MEDIA_VIDEO"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kitchen Memory uses your camera to record a short kitchen tour so we can remember what food you have.",
+          "microphonePermission": "We record audio along with your kitchen tour video.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kitchen Memory can use a kitchen tour video from your photo library instead of recording a new one."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FBF7F2",
+          "image": "./assets/icon.png",
+          "imageWidth": 120
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
