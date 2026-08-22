@@ -52,6 +52,31 @@ npm test          # run the business-logic test suite (Jest)
 npx tsc --noEmit  # typecheck
 ```
 
+### Desktop web app (no Expo/simulator needed)
+
+If you'd rather skip Expo Go/simulators entirely and just run the app in a
+browser on your computer:
+
+```bash
+npm run web-app
+```
+
+This builds a static export and starts a small local server
+(`server/index.js` — zero extra dependencies), then prints the URL to
+open. It's the same server behind the downloadable web-app package, and
+it's what enables **Send from Phone** below.
+
+#### Send from Phone
+
+The desktop browser obviously can't see your phone's camera. On the
+**Scan Kitchen** screen (web build only), tap **Send from Phone** to get a
+QR code — scan it with your phone (same WiFi network, no app/account
+needed), record or pick a video there, and it lands on the computer's scan
+flow automatically, same as any other upload. See
+[`docs/phone-upload.md`](docs/phone-upload.md) for exactly how that works
+and its one requirement (same local network — this never touches the
+internet).
+
 ---
 
 ## Demo flow
@@ -130,6 +155,7 @@ app/                          Expo Router file-based routes (screens only —
   onboarding/                 5-screen onboarding flow
   (tabs)/                     Home · Kitchen · Plan · Grocery · Family
   scan/                       record → review → processing → results → complete
+                               (plus phone-upload.tsx, web-only)
   recipe/[id]/                full recipe + cook-along, and swap
   settings/                   account, AI settings, privacy, notifications, data
   edit-*.tsx, edit-member/    Family-screen edit forms
@@ -154,6 +180,9 @@ src/
 
 __tests__/                    Jest tests for the engines (see Testing)
 docs/                         Deep-dive docs referenced throughout this file
+server/                       Zero-dependency local server for the desktop
+                               web-app build (static hosting + phone-upload
+                               relay — see docs/phone-upload.md)
 ```
 
 **Why this structure:** screens are thin — they read from the store, call

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +76,14 @@ export default function ScanIntroScreen() {
         <View style={{ gap: spacing.sm }}>
           <Button label="Record Kitchen" icon={<Ionicons name="videocam" size={18} color={colors.textInverse} />} onPress={() => router.push('/scan/record')} />
           <Button label="Upload a Video" variant="secondary" onPress={handleUpload} />
+          {Platform.OS === 'web' ? (
+            <Button
+              label="Send from Phone"
+              variant="secondary"
+              icon={<Ionicons name="qr-code-outline" size={18} color={colors.textPrimary} />}
+              onPress={() => router.push('/scan/phone-upload')}
+            />
+          ) : null}
           <Pressable onPress={handleUseDemo} style={{ alignSelf: 'center', marginTop: spacing.xs, paddingVertical: spacing.sm }} hitSlop={8}>
             <Caption color={colors.accentStrong} style={{ fontWeight: '700' }}>✨ Try it with a demo video</Caption>
           </Pressable>

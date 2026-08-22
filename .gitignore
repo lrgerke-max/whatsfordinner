@@ -7,6 +7,7 @@ node_modules/
 .expo/
 dist/
 dist-web/
+package-web/
 web-build/
 expo-env.d.ts
 *.zip
