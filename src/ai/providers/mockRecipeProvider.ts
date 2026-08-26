@@ -17,7 +17,10 @@ export class MockRecipeProvider implements RecipeProvider {
     const excludeIds = new Set(input.excludeRecipeIds ?? []);
     const withoutExcluded = input.recipeLibrary.filter((r) => !excludeIds.has(r.id));
     const eligible = withoutExcluded.filter(
-      (r) => isRecipeSafeForHousehold(r, input.household) && (!input.cuisine || r.cuisine === input.cuisine)
+      (r) =>
+        isRecipeSafeForHousehold(r, input.household) &&
+        (!input.cuisine || r.cuisine === input.cuisine) &&
+        input.mealRatings?.[r.id] !== 'never-again'
     );
     const pool = eligible.length > 0 ? eligible : withoutExcluded.length > 0 ? withoutExcluded : input.recipeLibrary;
 

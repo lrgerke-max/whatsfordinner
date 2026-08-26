@@ -21,6 +21,7 @@ export default function SaveMyFoodScreen() {
   const insets = useSafeAreaInsets();
   const household = useKitchenMemoryStore((s) => s.household);
   const inventory = useKitchenMemoryStore((s) => s.inventory);
+  const mealRatings = useKitchenMemoryStore((s) => s.mealRatings);
 
   const useSoonItems = inventory.filter((i) => i.freshness === 'use-soon');
   const [suggestions, setSuggestions] = useState<Recipe[] | null>(null);
@@ -42,6 +43,7 @@ export default function SaveMyFoodScreen() {
           recipeLibrary: RECIPE_LIBRARY,
           focusIngredientNames: names,
           excludeRecipeIds: picked.map((r) => r.id),
+          mealRatings,
         });
         if (picked.some((r) => r.id === recipe.id)) break;
         picked.push(recipe);

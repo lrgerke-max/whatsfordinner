@@ -141,7 +141,13 @@ export function reconcileRequests(plan: MealPlan, requests: SpecialRequest[], re
     if (!matchedRecipeId) {
       return { ...request, status: 'open' as const, matchedMealDate: undefined, matchedRecipeId: undefined };
     }
-    const meal = plan.meals.find((m) => m.recipeId === matchedRecipeId && m.status !== 'skipped');
+    // Two requests can match the same recipe; prefer the meal on this
+    // request's own preferred night so both aren't reported against whichever
+    // date happened to win that recipe.
+    const meal =
+      (request.preferredDate &&
+        plan.meals.find((m) => m.recipeId === matchedRecipeId && m.date === request.preferredDate && m.status !== 'skipped')) ||
+      plan.meals.find((m) => m.recipeId === matchedRecipeId && m.status !== 'skipped');
     if (!meal) {
       return { ...request, status: 'open' as const, matchedMealDate: undefined, matchedRecipeId: undefined };
     }
@@ -380,6 +386,11 @@ export function generateMealPlan(options: GenerateMealPlanOptions): MealPlan {
   // BEFORE the undated forced list so dated recipes are not stolen by the
   // day-0 cursor and dropped from their preferred night later.
   const forcedByDate = new Map<string, string>();
+  // Two open requests can independently match the same recipe (e.g. two
+  // people each ask for "tacos" on different nights) — only the first date
+  // may claim it, so the second falls through to normal scoring instead of
+  // silently losing its night at meal-build time and misreporting its date.
+  const claimedRecipeIds = new Set<string>();
   for (const request of openRequests) {
     if (!request.preferredDate) continue;
     // Dates outside the planned week (a past "Taco Tuesday" after a week
@@ -396,7 +407,9 @@ export function generateMealPlan(options: GenerateMealPlanOptions): MealPlan {
     // night" reshuffle) outranks a stale request match — let it fall back to
     // normal scoring (and stay unfulfilled) rather than force it right back.
     if (explicitExcludeIds.has(recipeId)) continue;
+    if (claimedRecipeIds.has(recipeId)) continue;
     forcedByDate.set(request.preferredDate, recipeId);
+    claimedRecipeIds.add(recipeId);
   }
 
   // Requests force their recipe into the plan, bypassing cuisine-repetition

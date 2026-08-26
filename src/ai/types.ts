@@ -68,6 +68,8 @@ export interface RecipeInput {
   focusIngredientNames?: string[];
   cuisine?: string;
   excludeRecipeIds?: string[];
+  /** So a recipe rated "Never Again" doesn't come back here either. */
+  mealRatings?: Record<string, RatingValue>;
 }
 
 export interface RecipeProvider {
