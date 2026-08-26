@@ -31,20 +31,23 @@ export default function SaveMyFoodScreen() {
       return;
     }
     const names = useSoonItems.map((i) => i.name);
-    Promise.all(
-      [0, 1, 2].map((offset) =>
-        recipeProvider.generateRecipe({
+    (async () => {
+      // Sequential, not parallel: scoring is deterministic, so each call must
+      // exclude the previous picks or all three return the same top recipe.
+      const picked: Recipe[] = [];
+      for (let i = 0; i < 3; i += 1) {
+        const recipe = await recipeProvider.generateRecipe({
           household,
           inventory,
           recipeLibrary: RECIPE_LIBRARY,
           focusIngredientNames: names,
-        })
-      )
-    ).then((recipes) => {
-      const seen = new Set<string>();
-      const unique = recipes.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
-      setSuggestions(unique);
-    });
+          excludeRecipeIds: picked.map((r) => r.id),
+        });
+        if (picked.some((r) => r.id === recipe.id)) break;
+        picked.push(recipe);
+      }
+      setSuggestions(picked);
+    })().catch(() => setSuggestions([])); // never leave the screen loading forever
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -84,7 +87,7 @@ export default function SaveMyFoodScreen() {
                       <View style={{ flex: 1, gap: 3 }}>
                         <BodyStrong>{recipe.name}</BodyStrong>
                         <Caption>{recipe.cuisine} · {recipe.cookTimeMinutes} min</Caption>
-                        <Caption color={colors.success} style={{ fontWeight: '700' }}>
+                        <Caption color={colors.success}>
                           Uses {match.matchedCount} of {match.requiredCount} things you have
                         </Caption>
                       </View>

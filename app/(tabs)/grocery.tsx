@@ -12,6 +12,7 @@ import { informAction } from '../../src/utils/confirm';
 import { GroceryDepartment, GroceryItem } from '../../src/types/grocery';
 import { DEPARTMENT_EMOJI, DEPARTMENT_LABEL, formatIngredientQuantity } from '../../src/utils/labels';
 import { Card } from '../../src/components/Card';
+import { Chip } from '../../src/components/Chip';
 import { TextField } from '../../src/components/TextField';
 import { Button } from '../../src/components/Button';
 import { Body, BodyStrong, Caption, Title } from '../../src/components/Typography';
@@ -28,6 +29,7 @@ export default function GroceryScreen() {
   const household = useKitchenMemoryStore((s) => s.household);
   const toggleGroceryItem = useKitchenMemoryStore((s) => s.toggleGroceryItem);
   const removeGroceryItem = useKitchenMemoryStore((s) => s.removeGroceryItem);
+  const clearCheckedGroceryItems = useKitchenMemoryStore((s) => s.clearCheckedGroceryItems);
   const addCustomGroceryItem = useKitchenMemoryStore((s) => s.addCustomGroceryItem);
   const regenerateGroceryList = useKitchenMemoryStore((s) => s.regenerateGroceryList);
 
@@ -35,18 +37,29 @@ export default function GroceryScreen() {
   const [newName, setNewName] = useState('');
   const [newQuantity, setNewQuantity] = useState('1');
   const [newUnit, setNewUnit] = useState('each');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hideChecked, setHideChecked] = useState(false);
+
+  const visibleItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return (groceryList?.items ?? []).filter((item) => {
+      if (hideChecked && item.checked) return false;
+      if (query && !item.name.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [groceryList, hideChecked, searchQuery]);
 
   const grouped = useMemo(() => {
     const map = new Map<GroceryDepartment, GroceryItem[]>();
     for (const d of DEPARTMENT_ORDER) map.set(d, []);
-    for (const item of groceryList?.items ?? []) {
+    for (const item of visibleItems) {
       map.get(item.department)?.push(item);
     }
     return map;
-  }, [groceryList]);
+  }, [visibleItems]);
 
   const totalCost = useMemo(
-    () => (groceryList?.items ?? []).reduce((sum, i) => sum + (i.estimatedPriceUsd ?? 0), 0),
+    () => (groceryList?.items ?? []).reduce((sum, i) => sum + (Number(i.estimatedPriceUsd) || 0), 0),
     [groceryList]
   );
   const checkedCount = (groceryList?.items ?? []).filter((i) => i.checked).length;
@@ -89,15 +102,46 @@ export default function GroceryScreen() {
           >
             <Ionicons name="refresh" size={20} color={colors.textSecondary} />
           </Pressable>
+          <Pressable
+            onPress={() => router.push('/send-list')}
+            accessibilityRole="button"
+            accessibilityLabel="Send list to phone"
+            hitSlop={12}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="paper-plane-outline" size={20} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/print-list?autoprint=1')}
+            accessibilityRole="button"
+            accessibilityLabel="Print shopping list"
+            hitSlop={12}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="print-outline" size={20} color={colors.textSecondary} />
+          </Pressable>
         </View>
       </View>
 
       {totalCount > 0 ? (
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm, gap: spacing.sm }}>
           <Caption>
             {checkedCount} of {totalCount} checked · ~${totalCost.toFixed(2)} estimated
             {household.shopping.weeklyBudgetUsd ? ` of $${household.shopping.weeklyBudgetUsd} budget` : ''}
           </Caption>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+            <View style={{ flexGrow: 1, minWidth: 200 }}>
+              <TextField value={searchQuery} onChangeText={setSearchQuery} placeholder="Search this list…" />
+            </View>
+            <Chip
+              label={hideChecked ? 'Showing to-buy only ✓' : 'Hide checked'}
+              selected={hideChecked}
+              onPress={() => setHideChecked((v) => !v)}
+            />
+            {checkedCount > 0 ? (
+              <Chip label={`Uncheck all (${checkedCount})`} onPress={clearCheckedGroceryItems} />
+            ) : null}
+          </View>
         </View>
       ) : null}
 
@@ -152,19 +196,25 @@ export default function GroceryScreen() {
                           color={item.checked ? colors.success : colors.textTertiary}
                         />
                       </Pressable>
-                      <Pressable style={{ flex: 1 }} onPress={() => toggleGroceryItem(item.id)}>
-                        <BodyStrong style={item.checked ? { textDecorationLine: 'line-through', color: colors.textTertiary } : undefined}>
+                      <Pressable
+                        style={{ flex: 1 }}
+                        onPress={() => toggleGroceryItem(item.id)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: item.checked }}
+                        accessibilityLabel={`${item.checked ? 'Uncheck' : 'Check'} ${item.name}`}
+                      >
+                        <BodyStrong style={item.checked ? { textDecorationLine: 'line-through', color: colors.textSecondary } : undefined}>
                           {item.name}
                         </BodyStrong>
                         <Caption>{formatIngredientQuantity(item.quantity, item.unit)}</Caption>
                       </Pressable>
                       {!item.isCustom ? (
-                        <Pressable onPress={() => handleWhy(item)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Why am I buying this?">
+                        <Pressable onPress={() => handleWhy(item)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Why am I buying ${item.name}?`}>
                           <Ionicons name="information-circle-outline" size={20} color={colors.textTertiary} />
                         </Pressable>
                       ) : null}
                       <Pressable onPress={() => removeGroceryItem(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}>
-                        <Ionicons name="close" size={20} color={colors.textTertiary} />
+                        <Ionicons name="trash-outline" size={20} color={colors.textTertiary} />
                       </Pressable>
                     </View>
                   ))}

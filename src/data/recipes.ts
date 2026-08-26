@@ -1,4 +1,5 @@
 import { Recipe } from '../types/recipe';
+import { generateRecipes } from './recipeGenerator';
 
 let n = 0;
 const rid = (slug: string) => `recipe_${slug}`;
@@ -10,7 +11,8 @@ const ing = (name: string, quantity: number, unit: string, extra: Partial<{ opti
   ...extra,
 });
 
-export const RECIPE_LIBRARY: Recipe[] = [
+/** Signature, hand-tuned recipes — always listed first. */
+const HAND_CRAFTED_RECIPES: Recipe[] = [
   {
     id: rid('brazilian-beef-stroganoff'),
     name: 'Brazilian Beef Stroganoff',
@@ -420,7 +422,7 @@ export const RECIPE_LIBRARY: Recipe[] = [
     instructions: [
       'Bread chicken cutlets: flour, then egg, then breadcrumbs.',
       'Pan-fry until golden on both sides.',
-      'Top with marinara and mozzarella; bake at 425°F until melted and bubbly.',
+      'Top with the tomato sauce and mozzarella; bake at 425°F until melted and bubbly.',
       'Serve over pasta with extra parmesan.',
     ],
   },
@@ -557,6 +559,15 @@ export const RECIPE_LIBRARY: Recipe[] = [
   },
 ];
 
+/**
+ * The full library: the 20 hand-crafted signatures plus the deterministic
+ * long tail (see recipeGenerator.ts). Generated recipes are stable across
+ * builds so persisted meal plans keep resolving.
+ */
+export const RECIPE_LIBRARY: Recipe[] = [...HAND_CRAFTED_RECIPES, ...generateRecipes()];
+
+const RECIPE_BY_ID = new Map(RECIPE_LIBRARY.map((r) => [r.id, r]));
+
 export function findRecipeById(id: string): Recipe | undefined {
-  return RECIPE_LIBRARY.find((r) => r.id === id);
+  return RECIPE_BY_ID.get(id);
 }

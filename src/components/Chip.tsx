@@ -8,26 +8,30 @@ interface ChipProps {
   onPress?: () => void;
   emoji?: string;
   tone?: 'default' | 'danger' | 'success' | 'warning';
+  accessibilityLabel?: string;
 }
 
-export function Chip({ label, selected, onPress, emoji, tone = 'default' }: ChipProps) {
-  const { colors, radius, fontSize, fontWeight, spacing } = useTheme();
+export function Chip({ label, selected, onPress, emoji, tone = 'default', accessibilityLabel }: ChipProps) {
+  const { colors, font, radius, fontSize, fontWeight, spacing } = useTheme();
 
   const toneColors = {
     default: { bg: colors.accentSoft, fg: colors.accentStrong },
-    danger: { bg: colors.dangerSoft, fg: colors.danger },
-    success: { bg: colors.successSoft, fg: colors.success },
-    warning: { bg: colors.warningSoft, fg: colors.warning },
+    danger: { bg: colors.dangerSoft, fg: colors.dangerStrong },
+    success: { bg: colors.successSoft, fg: colors.successStrong },
+    warning: { bg: colors.warningSoft, fg: colors.warningStrong },
   }[tone];
 
   const bg = selected ? toneColors.bg : colors.bgSubtle;
   const fg = selected ? toneColors.fg : colors.textSecondary;
-  const borderColor = selected ? toneColors.fg : colors.border;
+  // border (cream300) was nearly invisible against bgSubtle — use the
+  // stronger token so unselected chips read as tappable boundaries.
+  const borderColor = selected ? toneColors.fg : colors.borderStrong;
 
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       hitSlop={4}
       style={({ pressed }) => [
@@ -42,7 +46,7 @@ export function Chip({ label, selected, onPress, emoji, tone = 'default' }: Chip
         },
       ]}
     >
-      <Text style={{ color: fg, fontSize: fontSize.small, fontWeight: fontWeight.medium }} maxFontSizeMultiplier={1.6}>
+      <Text style={{ color: fg, fontSize: fontSize.small, fontFamily: font.medium, fontWeight: fontWeight.medium }} maxFontSizeMultiplier={1.6}>
         {emoji ? `${emoji} ` : ''}
         {label}
       </Text>

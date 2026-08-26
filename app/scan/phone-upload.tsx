@@ -11,11 +11,6 @@ import { EmptyState } from '../../src/components/EmptyState';
 
 const POLL_INTERVAL_MS = 2000;
 
-function generateToken(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 function readVideoDuration(objectUrl: string): Promise<number> {
   return new Promise((resolve) => {
     const video = document.createElement('video');
@@ -39,7 +34,11 @@ export default function PhoneUploadScreen() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const tokenRef = useRef<string>(generateToken());
+  // Generated lazily in the effect, not at render: crypto.randomUUID exists
+  // only in secure contexts (localhost qualifies, a LAN IP does not), and a
+  // render-time throw here would crash the screen the app itself advertises
+  // visiting from other machines.
+  const tokenRef = useRef<string>('');
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -48,38 +47,57 @@ export default function PhoneUploadScreen() {
 
     async function setup() {
       try {
+        if (typeof crypto?.randomUUID !== 'function') {
+          if (!cancelled) {
+            setError('This feature needs to run from http://localhost on this computer. Reopen the app from the desktop launcher and try again.');
+          }
+          return;
+        }
+        tokenRef.current = crypto.randomUUID();
         const res = await fetch('/api/local-info');
+        if (!res.ok) throw new Error('local-info failed');
         const { ip, port } = await res.json();
         const url = `http://${ip}:${port}/phone-upload/${tokenRef.current}`;
         if (cancelled) return;
         setPhoneUrl(url);
 
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#211D19', light: '#FBF7F200' } });
+        // Pure black on opaque white — maximum scanner contrast in any theme.
+        const dataUrl = await QRCode.toDataURL(url, { margin: 2, width: 240, color: { dark: '#000000', light: '#FFFFFF' } });
         if (!cancelled) setQrDataUrl(dataUrl);
       } catch {
         if (!cancelled) setError("Couldn't reach the local server. Make sure you're using the desktop web-app build.");
         return;
       }
 
+      let claiming = false;
       pollTimer = setInterval(async () => {
+        // Overlapping callbacks can both see ready:true; only one may claim
+        // the single-use upload, and the interval must stay alive until the
+        // claim fully succeeds (a mid-transfer failure should keep polling).
+        if (claiming) return;
+        claiming = true;
         try {
           const statusRes = await fetch(`/api/phone-upload/${tokenRef.current}/status`);
           const { ready } = await statusRes.json();
           if (!ready) return;
 
-          clearInterval(pollTimer);
           const videoRes = await fetch(`/api/phone-upload/${tokenRef.current}`);
+          if (!videoRes.ok) return; // someone else claimed it, or it vanished — keep waiting
           const blob = await videoRes.blob();
+          if (blob.size === 0) return;
           const objectUrl = URL.createObjectURL(blob);
           const duration = await readVideoDuration(objectUrl);
 
+          clearInterval(pollTimer);
           if (cancelled) return;
           reset();
           finishRecording(objectUrl, Math.round(duration), false);
           router.replace('/scan/review');
         } catch {
           // transient network hiccup — keep polling
+        } finally {
+          claiming = false;
         }
       }, POLL_INTERVAL_MS);
     }
@@ -130,7 +148,7 @@ export default function PhoneUploadScreen() {
               Scan this with your phone's camera to open a page where you can record or pick your kitchen video.
             </Body>
 
-            <View style={{ backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}>
               <Image source={{ uri: qrDataUrl }} style={{ width: 220, height: 220 }} />
             </View>
 

@@ -20,7 +20,8 @@ dependency — everything stays on your local WiFi network.
    `http://<lan-ip>:<port>/phone-upload/<token>`.
 3. Scanning that QR code opens a tiny, dependency-free HTML page served
    directly by `server/index.js` (`phoneUploadPageHtml`) — just a file
-   input with `accept="video/*" capture="environment"`, which on a phone
+   input with `accept="video/*"` (no `capture` attribute: forcing the
+   camera open would hide the photo-library option), which on a phone
    browser offers "record a new video" or "choose an existing one." On
    selection, it `fetch(...).POST`s the raw file bytes straight to
    `/api/phone-upload/<token>` — no multipart parsing needed since the

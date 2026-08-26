@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../src/theme/useTheme';
 import { useOnboardingStore } from '../../src/state/onboardingStore';
 import { useKitchenMemoryStore } from '../../src/state/store';
+import { gradients } from '../../src/theme/colors';
 import { Body, Caption, Display } from '../../src/components/Typography';
 import { Button } from '../../src/components/Button';
 
@@ -28,11 +29,16 @@ export default function WelcomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <LinearGradient colors={['#F3ECE2', '#FBF7F2']} style={{ height: '48%', alignItems: 'center', justifyContent: 'center' }}>
-        <Body style={{ fontSize: 96 }}>🧠🍲</Body>
-      </LinearGradient>
+      {/* Signature motif: the brand disc, echoing the editorial hero layout. */}
+      <View style={{ height: '44%', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 232, height: 232, borderRadius: 116, overflow: 'hidden' }}>
+          <LinearGradient colors={[...gradients.accent]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Body style={{ fontSize: 88 }}>🧠🍲</Body>
+          </LinearGradient>
+        </View>
+      </View>
 
-      <View style={{ flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: insets.bottom + spacing.lg, justifyContent: 'space-between' }}>
+      <View style={{ flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, paddingBottom: insets.bottom + spacing.lg, justifyContent: 'space-between' }}>
         <View style={{ gap: spacing.sm }}>
           <Display style={{ fontSize: 36 }}>Meet your kitchen's memory.</Display>
           <Body color={colors.textSecondary} style={{ fontSize: 18 }}>
@@ -44,7 +50,7 @@ export default function WelcomeScreen() {
         <View style={{ gap: spacing.sm }}>
           <Button label="Get Started" onPress={handleGetStarted} size="lg" />
           <Pressable onPress={handleUseDemo} style={{ alignItems: 'center', paddingVertical: spacing.sm }} hitSlop={8}>
-            <Caption color={colors.accentStrong} style={{ fontWeight: '700' }}>✨ Explore with a demo household</Caption>
+            <Caption color={colors.accentStrong}>✨ Explore with a demo household</Caption>
           </Pressable>
         </View>
       </View>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -42,6 +42,11 @@ export default function ScanResultsScreen() {
 
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
+  // Double-tap protection: applying the merge twice would duplicate scan
+  // records and re-run two full plan regenerations. Declared above the
+  // !analysis early return — hooks must not sit behind conditionals.
+  const applyingRef = useRef(false);
+
   const grouped = useMemo(() => {
     const map = new Map<ReviewGroup, DetectedItem[]>();
     for (const g of GROUP_ORDER) map.set(g, []);
@@ -71,6 +76,8 @@ export default function ScanResultsScreen() {
   const acceptedCount = analysis.detectedItems.length - excludedIds.size;
 
   const handleLooksGood = () => {
+    if (applyingRef.current) return;
+    applyingRef.current = true;
     const filteredAnalysis = {
       ...analysis,
       detectedItems: analysis.detectedItems.filter((i) => !excludedIds.has(i.id)),
@@ -140,7 +147,7 @@ export default function ScanResultsScreen() {
                           {!item.matchedInventoryItemId ? <Badge label="New" tone="accent" /> : null}
                         </View>
                         <Caption>{describeQuantity(item.quantityLevel, item.approxQuantity)}</Caption>
-                        {lowConfidence ? <Caption color={colors.warning} style={{ fontWeight: '700' }}>We aren't sure about this one</Caption> : null}
+                        {lowConfidence ? <Caption color={colors.warning}>We aren't sure about this one</Caption> : null}
                       </View>
                       <Ionicons
                         name={excluded ? 'add-circle-outline' : 'checkmark-circle'}

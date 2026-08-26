@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -12,8 +12,11 @@ import { formatRelativeScanTime } from '../../src/utils/date';
 import { Card } from '../../src/components/Card';
 import { Button } from '../../src/components/Button';
 import { Badge } from '../../src/components/Badge';
+import { TextField } from '../../src/components/TextField';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Body, BodyStrong, Caption, Title } from '../../src/components/Typography';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '../../src/theme/colors';
 
 const LOCATION_ORDER: StorageLocation[] = ['refrigerator', 'freezer', 'pantry', 'cabinet', 'countertop', 'other'];
 
@@ -29,6 +32,7 @@ export default function KitchenScreen() {
   const insets = useSafeAreaInsets();
   const inventory = useKitchenMemoryStore((s) => s.inventory);
   const scans = useKitchenMemoryStore((s) => s.scans);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const lastScanAt = useMemo(() => {
     if (scans[0]?.completedAt) return scans[0].completedAt;
@@ -36,17 +40,23 @@ export default function KitchenScreen() {
     return timestamps[timestamps.length - 1];
   }, [scans, inventory]);
 
+  const filteredInventory = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return inventory;
+    return inventory.filter((item) => item.name.toLowerCase().includes(query));
+  }, [inventory, searchQuery]);
+
   const grouped = useMemo(() => {
     const map = new Map<StorageLocation, InventoryItem[]>();
     for (const loc of LOCATION_ORDER) map.set(loc, []);
-    for (const item of inventory) {
+    for (const item of filteredInventory) {
       map.get(item.location)?.push(item);
     }
     for (const items of map.values()) {
       items.sort((a, b) => Number(b.needsReview) - Number(a.needsReview) || a.name.localeCompare(b.name));
     }
     return map;
-  }, [inventory]);
+  }, [filteredInventory]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
@@ -67,17 +77,25 @@ export default function KitchenScreen() {
         <Card
           elevated
           onPress={() => router.push('/scan')}
-          style={{ backgroundColor: colors.accent, borderColor: colors.accent, flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
+          style={{ borderWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.md, overflow: 'hidden' }}
         >
-          <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="videocam" size={24} color={colors.textInverse} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <BodyStrong color={colors.textInverse}>Scan Kitchen</BodyStrong>
-            <Caption color="rgba(255,255,255,0.85)">{formatRelativeScanTime(lastScanAt)} · {inventory.length} items tracked</Caption>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textInverse} />
+          <LinearGradient colors={[...gradients.accent]} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1, padding: spacing.lg }}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(8, 11, 9, 0.28)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="videocam" size={24} color={colors.textInverse} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <BodyStrong color={colors.textInverse}>Scan Kitchen</BodyStrong>
+              <Caption color="rgba(8, 11, 9, 0.75)">{formatRelativeScanTime(lastScanAt)} · {inventory.length} items tracked</Caption>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textInverse} />
+          </LinearGradient>
         </Card>
+
+        {inventory.length > 5 ? (
+          <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+            <TextField value={searchQuery} onChangeText={setSearchQuery} placeholder="Search your kitchen…" />
+          </View>
+        ) : null}
 
         {inventory.length === 0 ? (
           <EmptyState
@@ -87,6 +105,8 @@ export default function KitchenScreen() {
             actionLabel="Scan Kitchen"
             onAction={() => router.push('/scan')}
           />
+        ) : filteredInventory.length === 0 ? (
+          <EmptyState emoji="🔍" title={`No matches for "${searchQuery}"`} message="Try a shorter search, or the item may not be tracked yet." />
         ) : (
           LOCATION_ORDER.map((loc) => {
             const items = grouped.get(loc) ?? [];
@@ -120,7 +140,7 @@ export default function KitchenScreen() {
                         </View>
                         <Caption>{describeQuantity(item.quantityLevel, item.approxQuantity)}</Caption>
                         {item.needsReview ? (
-                          <Caption color={colors.warning} style={{ fontWeight: '700' }}>We aren't sure about this one · Fix</Caption>
+                          <Caption color={colors.warning}>We aren't sure about this one · Fix</Caption>
                         ) : null}
                       </View>
                       {item.freshness !== 'unknown' ? <Badge label={FRESHNESS_LABEL[item.freshness]} tone={freshnessTone(item.freshness)} /> : null}

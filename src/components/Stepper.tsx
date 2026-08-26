@@ -24,18 +24,18 @@ export function Stepper({ label, value, onChange, min = 0, max = 10 }: StepperPr
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={`Decrease ${label}`}
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: value <= min ? 0.35 : 1 }}
+          style={({ pressed }) => ({ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: value <= min ? 0.35 : pressed ? 0.6 : 1 })}
         >
           <Ionicons name="remove" size={18} color={colors.textPrimary} />
         </Pressable>
-        <BodyStrong style={{ minWidth: 20, textAlign: 'center' }}>{value}</BodyStrong>
+        <BodyStrong accessibilityLabel={`${label} count`} accessibilityValue={{ min, max, now: value }} style={{ minWidth: 20, textAlign: 'center' }}>{value}</BodyStrong>
         <Pressable
           onPress={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={`Increase ${label}`}
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: value >= max ? 0.35 : 1 }}
+          style={({ pressed }) => ({ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: value >= max ? 0.35 : pressed ? 0.6 : 1 })}
         >
           <Ionicons name="add" size={18} color={colors.textPrimary} />
         </Pressable>

@@ -26,6 +26,10 @@ export function mergeScanIntoInventory(previousInventory: InventoryItem[], analy
   const inventory = [...previousInventory];
   const newItems: InventoryItem[] = [];
   const updatedItems: InventoryItem[] = [];
+  // Two detections ("butter", "salted butter") can resolve to the same shelf
+  // item — apply only the first so counts and quantity levels don't double-
+  // apply in detection order.
+  const resolvedTargets = new Set<string>();
 
   for (const detected of analysis.detectedItems) {
     const matchIndex = detected.matchedInventoryItemId
@@ -34,6 +38,8 @@ export function mergeScanIntoInventory(previousInventory: InventoryItem[], analy
 
     if (matchIndex >= 0) {
       const existing = inventory[matchIndex];
+      if (resolvedTargets.has(existing.id)) continue;
+      resolvedTargets.add(existing.id);
       const updated: InventoryItem = {
         ...existing,
         quantityLevel: detected.quantityLevel,
@@ -66,6 +72,9 @@ export function mergeScanIntoInventory(previousInventory: InventoryItem[], analy
         lastSeenAt: now,
       };
       inventory.push(created);
+      // A just-created item must also count as claimed, or a second detection
+      // of the same thing would take the update branch and double-report it.
+      resolvedTargets.add(created.id);
       newItems.push(created);
     }
   }

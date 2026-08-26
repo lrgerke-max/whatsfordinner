@@ -20,11 +20,26 @@ export default function ScanRecordScreen() {
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // The state above lives in render closures; recordAsync resolves long
+  // after this handler started, so the real count must come from a ref.
+  const elapsedRef = useRef(0);
 
   const finishRecording = useScanFlowStore((s) => s.finishRecording);
   const startRecording = useScanFlowStore((s) => s.startRecording);
   const areasCoveredHint = useScanFlowStore((s) => s.areasCoveredHint);
   const toggleAreaHint = useScanFlowStore((s) => s.toggleAreaHint);
+
+  // Guards the async recordAsync resolution: cancelling mid-recording unmounts
+  // this screen, and a late-resolving video must not navigate the user back
+  // into the flow they just left. MUST live above the permission early-returns
+  // — hooks after conditional returns crash when permission state arrives.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!cameraPermission?.granted) requestCameraPermission();
@@ -34,7 +49,10 @@ export default function ScanRecordScreen() {
 
   useEffect(() => {
     if (!isRecording) return;
-    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    const interval = setInterval(() => {
+      elapsedRef.current += 1;
+      setElapsedSeconds(elapsedRef.current);
+    }, 1000);
     return () => clearInterval(interval);
   }, [isRecording]);
 
@@ -66,15 +84,19 @@ export default function ScanRecordScreen() {
     }
     setIsRecording(true);
     setElapsedSeconds(0);
+    elapsedRef.current = 0;
     startRecording();
     try {
       const video = await cameraRef.current?.recordAsync({ maxDuration: 300 });
+      if (!aliveRef.current) return; // cancelled mid-recording — do not navigate
       setIsRecording(false);
       if (video?.uri) {
-        finishRecording(video.uri, elapsedSeconds || 60, false);
+        // Real duration drives how thorough the analysis pass can be.
+        finishRecording(video.uri, Math.max(elapsedRef.current, 5), false);
         router.push('/scan/review');
       }
     } catch (e) {
+      if (!aliveRef.current) return;
       setIsRecording(false);
     }
   };
@@ -87,7 +109,15 @@ export default function ScanRecordScreen() {
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" mode="video" mute={false} />
 
       <View style={[styles.overlayTop, { paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Cancel">
+        <Pressable
+          onPress={() => {
+            if (isRecording) cameraRef.current?.stopRecording();
+            router.back();
+          }}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+        >
           <Ionicons name="close" size={28} color="#fff" />
         </Pressable>
         {isRecording ? (
@@ -113,7 +143,7 @@ export default function ScanRecordScreen() {
                 accessibilityLabel={`${area.label}${covered ? ', covered' : ''}`}
               >
                 {covered ? <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} /> : null}
-                <Body color="#fff" style={{ fontSize: 13, fontWeight: '600' }}>{area.label}</Body>
+                <BodyStrong color="#fff" style={{ fontSize: 13 }}>{area.label}</BodyStrong>
               </Pressable>
             );
           })}

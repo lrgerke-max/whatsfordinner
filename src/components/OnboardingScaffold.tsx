@@ -24,7 +24,13 @@ export function OnboardingScaffold({ step, totalSteps, children, ctaLabel, onNex
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
         {showBack ? (
-          <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
             <Ionicons name="chevron-back" size={26} color={colors.textSecondary} />
           </Pressable>
         ) : (

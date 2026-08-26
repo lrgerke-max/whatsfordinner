@@ -81,9 +81,11 @@ const SPECS: SeedSpec[] = [
 ];
 
 export function buildSeedInventory(): InventoryItem[] {
-  return SPECS.map((spec) => {
+  return SPECS.map((spec, index) => {
     const lastSeenAt = isoDaysAgo(SCAN_AGE_DAYS);
-    const addedAt = isoDaysAgo(spec.addedDaysAgo ?? SCAN_AGE_DAYS + Math.floor(Math.random() * 20));
+    // Deterministic spread — no Math.random, so repeated demo resets produce
+    // identical, rehearsed state.
+    const addedAt = isoDaysAgo(spec.addedDaysAgo ?? SCAN_AGE_DAYS + (index % 20));
     const item: InventoryItem = {
       id: generateId('item'),
       name: spec.name,

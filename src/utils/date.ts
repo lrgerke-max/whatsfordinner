@@ -1,5 +1,14 @@
+/**
+ * Calendar-day helpers. Meal dates and week starts represent *local* calendar
+ * days, so everything here must be built from local year/month/day — never
+ * from `toISOString()`, which shifts to UTC and rolls the day over in the
+ * evening for anyone west of UTC (plan would silently regenerate each night).
+ */
 export function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function addDays(isoDate: string, days: number): string {

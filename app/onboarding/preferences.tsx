@@ -43,7 +43,7 @@ export default function OnboardingPreferencesScreen() {
               backgroundColor: active.id === m.id ? colors.accent : colors.bgSubtle,
             }}
           >
-            <Caption color={active.id === m.id ? colors.textInverse : colors.textSecondary} style={{ fontWeight: '700' }}>
+            <Caption color={active.id === m.id ? colors.textInverse : colors.textSecondary}>
               {m.name}
             </Caption>
           </Pressable>

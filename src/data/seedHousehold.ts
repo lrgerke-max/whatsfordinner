@@ -1,6 +1,14 @@
 import { generateId } from '../utils/id';
-import { nowIso } from '../utils/date';
+import { addDays, nowIso, startOfWeek } from '../utils/date';
 import { Household } from '../types/household';
+import { SpecialRequest } from '../types/specialRequests';
+
+export const SEED_MEMBER_IDS = {
+  lauren: 'member_seed_lauren',
+  marcus: 'member_seed_marcus',
+  sofia: 'member_seed_sofia',
+  giulia: 'member_seed_giulia',
+} as const;
 
 export function buildSeedHousehold(): Household {
   const now = nowIso();
@@ -21,7 +29,7 @@ export function buildSeedHousehold(): Household {
     },
     members: [
       {
-        id: generateId('member'),
+        id: SEED_MEMBER_IDS.lauren,
         name: 'Lauren',
         role: 'adult',
         age: 44,
@@ -34,7 +42,7 @@ export function buildSeedHousehold(): Household {
         },
       },
       {
-        id: generateId('member'),
+        id: SEED_MEMBER_IDS.marcus,
         name: 'Marcus',
         role: 'adult',
         age: 46,
@@ -47,7 +55,7 @@ export function buildSeedHousehold(): Household {
         },
       },
       {
-        id: generateId('member'),
+        id: SEED_MEMBER_IDS.sofia,
         name: 'Sofia',
         role: 'teen',
         age: 16,
@@ -62,7 +70,7 @@ export function buildSeedHousehold(): Household {
         },
       },
       {
-        id: generateId('member'),
+        id: SEED_MEMBER_IDS.giulia,
         name: 'Giulia',
         role: 'teen',
         age: 15,
@@ -112,3 +120,25 @@ export function buildBlankHousehold(): Household {
     ],
   };
 }
+
+/** Demo cravings for the seed household — one that matches the recipe library, one left open. */
+export const SEED_SPECIAL_REQUESTS: SpecialRequest[] = [
+  {
+    id: generateId('request'),
+    memberId: SEED_MEMBER_IDS.sofia,
+    memberName: 'Sofia',
+    text: 'Taco Tuesday please!!',
+    createdAt: nowIso(),
+    status: 'open',
+    // She did say Tuesday. The planner pins tacos to this week's Tuesday.
+    preferredDate: addDays(startOfWeek(), 1),
+  },
+  {
+    id: generateId('request'),
+    memberId: SEED_MEMBER_IDS.giulia,
+    memberName: 'Giulia',
+    text: "Maya wants her friend's mom's birria",
+    createdAt: nowIso(),
+    status: 'open',
+  },
+];

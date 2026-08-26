@@ -11,6 +11,7 @@ import { findRecipeById, RECIPE_LIBRARY } from '../../../src/data/recipes';
 import { getIngredientAvailability } from '../../../src/engines/mealPlanningEngine';
 import { cuisineEmoji } from '../../../src/theme/colors';
 import { RATING_EMOJI, RATING_LABEL, formatIngredientQuantity } from '../../../src/utils/labels';
+import { toIsoDate } from '../../../src/utils/date';
 import { RecipeImage } from '../../../src/components/RecipeImage';
 import { Card } from '../../../src/components/Card';
 import { Body, BodyStrong, Caption, Title } from '../../../src/components/Typography';
@@ -28,6 +29,9 @@ export default function RecipeScreen() {
   const swapMealTo = useKitchenMemoryStore((s) => s.swapMealTo);
 
   const [keepAwake, setKeepAwake] = useState(false);
+  // Servings scaler: cooks rarely match a recipe's default batch size.
+  // (recipe is resolved below; the fallback here is replaced once it exists.)
+  const [servings, setServings] = useState<number | null>(null);
 
   React.useEffect(() => {
     if (keepAwake) {
@@ -44,8 +48,9 @@ export default function RecipeScreen() {
   const recipe = meal ? findRecipeById(meal.recipeId) : RECIPE_LIBRARY.find((r) => r.id === id);
 
   const availability = useMemo(() => (recipe ? getIngredientAvailability(recipe, inventory) : []), [recipe, inventory]);
+  const activeServings = servings ?? recipe?.servings ?? 4;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toIsoDate(new Date());
   const todayMeal = mealPlan?.meals.find((m) => m.date === today);
 
   if (!recipe) {
@@ -87,8 +92,41 @@ export default function RecipeScreen() {
 
           <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm }}>
             <Stat icon="time-outline" label={`${recipe.cookTimeMinutes} min`} />
-            <Stat icon="people-outline" label={`Serves ${recipe.servings}`} />
             <Stat icon="flame-outline" label={`${recipe.proteinGrams}g protein`} />
+          </View>
+
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md }}
+            accessibilityRole="adjustable"
+            accessibilityLabel={`Servings, currently ${activeServings}`}
+          >
+            <Caption>SERVES</Caption>
+            <Pressable
+              onPress={() => setServings(Math.max(1, activeServings - 1))}
+              accessibilityRole="button"
+              accessibilityLabel="Fewer servings"
+              hitSlop={8}
+              disabled={activeServings <= 1}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center', opacity: activeServings <= 1 ? 0.4 : 1 }}
+            >
+              <Ionicons name="remove" size={20} color={colors.textPrimary} />
+            </Pressable>
+            <BodyStrong style={{ fontSize: 20, minWidth: 28, textAlign: 'center' }}>{activeServings}</BodyStrong>
+            <Pressable
+              onPress={() => setServings(Math.min(24, activeServings + 1))}
+              accessibilityRole="button"
+              accessibilityLabel="More servings"
+              hitSlop={8}
+              disabled={activeServings >= 24}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center', opacity: activeServings >= 24 ? 0.4 : 1 }}
+            >
+              <Ionicons name="add" size={20} color={colors.textPrimary} />
+            </Pressable>
+            {servings !== null && servings !== recipe.servings ? (
+              <Pressable onPress={() => setServings(null)} accessibilityRole="button" accessibilityLabel="Reset to original servings" hitSlop={8}>
+                <Caption color={colors.accentStrong}>Reset</Caption>
+              </Pressable>
+            ) : null}
           </View>
 
           {meal ? (
@@ -113,11 +151,11 @@ export default function RecipeScreen() {
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl, gap: spacing.sm }}>
           <Title style={{ fontSize: 20 }}>Ingredients</Title>
           {missingCount > 0 ? (
-            <Caption color={colors.warning} style={{ fontWeight: '700' }}>
+            <Caption color={colors.warning}>
               You'll need to buy {missingCount} thing{missingCount === 1 ? '' : 's'}
             </Caption>
           ) : (
-            <Caption color={colors.success} style={{ fontWeight: '700' }}>You have everything for this one</Caption>
+            <Caption color={colors.success}>You have everything for this one</Caption>
           )}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             {availability.map(({ ingredient, have }, idx) => (
@@ -139,9 +177,17 @@ export default function RecipeScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <BodyStrong>{ingredient.name}{ingredient.optional ? ' (optional)' : ''}</BodyStrong>
-                  <Caption>{formatIngredientQuantity(ingredient.quantity, ingredient.unit)}</Caption>
+                  <Caption>
+                    {formatIngredientQuantity(
+                      Math.round(ingredient.quantity * (activeServings / recipe.servings) * 100) / 100,
+                      ingredient.unit
+                    )}
+                    {servings !== null && servings !== recipe.servings
+                      ? ` · was ${formatIngredientQuantity(ingredient.quantity, ingredient.unit)}`
+                      : ''}
+                  </Caption>
                 </View>
-                <Caption color={have ? colors.success : colors.warning} style={{ fontWeight: '700' }}>
+                <Caption color={have ? colors.success : colors.warning}>
                   {have ? 'Have it' : 'Need to buy'}
                 </Caption>
               </View>

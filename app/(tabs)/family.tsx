@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/useTheme';
 import { useKitchenMemoryStore } from '../../src/state/store';
 import { COOKING_EFFORT_LABEL, COOKING_TIME_LABEL } from '../../src/utils/labels';
+import { weekdayLabel } from '../../src/utils/date';
+import { SpecialRequest } from '../../src/types/specialRequests';
 import { Card } from '../../src/components/Card';
 import { Badge } from '../../src/components/Badge';
 import { Body, BodyStrong, Caption, Title } from '../../src/components/Typography';
@@ -22,6 +24,18 @@ export default function FamilyScreen() {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const household = useKitchenMemoryStore((s) => s.household);
+  const specialRequests = useKitchenMemoryStore((s) => s.specialRequests);
+
+  const openRequestsByMember = useMemo(() => {
+    const byMember = new Map<string, SpecialRequest[]>();
+    for (const request of specialRequests) {
+      if (request.status === 'done') continue;
+      const list = byMember.get(request.memberId) ?? [];
+      list.push(request);
+      byMember.set(request.memberId, list);
+    }
+    return byMember;
+  }, [specialRequests]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
@@ -37,39 +51,78 @@ export default function FamilyScreen() {
 
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Caption>MEMBERS · {household.members.length}</Caption>
-            <Pressable onPress={() => router.push('/edit-member/new')} hitSlop={8}>
-              <Caption color={colors.accentStrong} style={{ fontWeight: '700' }}>+ Add</Caption>
+            <Caption accessibilityRole="header">MEMBERS · {household.members.length}</Caption>
+            <Pressable onPress={() => router.push('/edit-member/new')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Add a family member">
+              <Caption color={colors.accentStrong}>+ Add</Caption>
             </Pressable>
           </View>
           <Card style={{ padding: 0, overflow: 'hidden' }}>
-            {household.members.map((member, idx) => (
-              <Pressable
-                key={member.id}
-                onPress={() => router.push(`/edit-member/${member.id}`)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.sm,
-                  padding: spacing.md,
-                  borderTopWidth: idx === 0 ? 0 : 1,
-                  borderTopColor: colors.border,
-                }}
-              >
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-                  <BodyStrong color={colors.accentStrong}>{member.name.charAt(0).toUpperCase()}</BodyStrong>
+            {household.members.map((member, idx) => {
+              const memberRequests = openRequestsByMember.get(member.id) ?? [];
+              return (
+                <View
+                  key={member.id}
+                  style={{ borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: colors.border }}
+                >
+                  <Pressable
+                    onPress={() => router.push(`/edit-member/${member.id}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${member.name}`}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.sm,
+                      padding: spacing.md,
+                    }}
+                  >
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                      <BodyStrong color={colors.accentStrong}>{member.name.charAt(0).toUpperCase()}</BodyStrong>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <BodyStrong>{member.name}</BodyStrong>
+                      <Caption>
+                        {member.role === 'adult' ? 'Adult' : member.role === 'teen' ? 'Teen' : 'Kid'}
+                        {member.age ? ` · ${member.age}` : ''}
+                        {member.activityLevel === 'high' ? ' · Active' : ''}
+                      </Caption>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                  </Pressable>
+                  {memberRequests.length > 0 ? (
+                    <View style={{ paddingHorizontal: spacing.md, gap: spacing.xs }}>
+                      {memberRequests.map((request) => (
+                        <View key={request.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                          <Body numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>{request.text}</Body>
+                          {request.status === 'planned' && request.matchedMealDate ? (
+                            <Badge label={`Planned ${weekdayLabel(request.matchedMealDate)}`} tone="success" />
+                          ) : (
+                            <Badge label="Still hoping" tone="warning" />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add a meal request for ${member.name}`}
+                    onPress={() => router.push(`/add-request?memberId=${member.id}`)}
+                    hitSlop={8}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: spacing.md,
+                      paddingBottom: spacing.md,
+                      paddingTop: 4,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={16} color={colors.accentStrong} />
+                    <Caption color={colors.accentStrong}>Add request</Caption>
+                  </Pressable>
                 </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <BodyStrong>{member.name}</BodyStrong>
-                  <Caption>
-                    {member.role === 'adult' ? 'Adult' : member.role === 'teen' ? 'Teen' : 'Kid'}
-                    {member.age ? ` · ${member.age}` : ''}
-                    {member.activityLevel === 'high' ? ' · Active' : ''}
-                  </Caption>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-              </Pressable>
-            ))}
+              );
+            })}
           </Card>
         </View>
 

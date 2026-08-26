@@ -1,24 +1,23 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../src/theme/useTheme';
 import { useKitchenMemoryStore, computeLearningInsight } from '../../src/state/store';
 import { findRecipeById } from '../../src/data/recipes';
 import { cuisineEmoji } from '../../src/theme/colors';
-import { formatRelativeScanTime, weekdayLabel } from '../../src/utils/date';
+import { formatRelativeScanTime, toIsoDate, weekdayLabel } from '../../src/utils/date';
 import { Card } from '../../src/components/Card';
 import { Button } from '../../src/components/Button';
 import { Badge } from '../../src/components/Badge';
 import { RecipeImage } from '../../src/components/RecipeImage';
-import { Body, BodyStrong, Caption, Display, Title } from '../../src/components/Typography';
+import { Body, BodyStrong, Caption, Display } from '../../src/components/Typography';
 import { EmptyState } from '../../src/components/EmptyState';
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { confirmAction } from '../../src/utils/confirm';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '../../src/theme/colors';
 
 export default function HomeScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -28,16 +27,52 @@ export default function HomeScreen() {
   const mealPlan = useKitchenMemoryStore((s) => s.mealPlan);
   const scans = useKitchenMemoryStore((s) => s.scans);
   const ensureMealPlan = useKitchenMemoryStore((s) => s.ensureMealPlan);
-  const insight = useKitchenMemoryStore((s) => computeLearningInsight(s));
+  // Select primitives only — deriving an object inside the selector would
+  // create a new snapshot every store change and re-render Home each time.
+  const mealRatings = useKitchenMemoryStore((s) => s.mealRatings);
+  const acknowledgedInsightKeys = useKitchenMemoryStore((s) => s.acknowledgedInsightKeys);
   const dismissInsight = useKitchenMemoryStore((s) => s.dismissInsight);
+  const specialRequests = useKitchenMemoryStore((s) => s.specialRequests);
+  const completeSpecialRequest = useKitchenMemoryStore((s) => s.completeSpecialRequest);
+  const removeSpecialRequest = useKitchenMemoryStore((s) => s.removeSpecialRequest);
+  const regenerateMealPlan = useKitchenMemoryStore((s) => s.regenerateMealPlan);
+
+  const handleShuffleWeek = () => {
+    confirmAction(
+      'Shuffle the week?',
+      'Every uncooked night gets re-planned with fresh options based on your kitchen. Cooked meals and ratings stay put.',
+      'Shuffle',
+      () => regenerateMealPlan({ reshuffle: true }),
+      false
+    );
+  };
 
   useEffect(() => {
     ensureMealPlan();
   }, [ensureMealPlan]);
 
-  const today = todayIso();
-  const todayMeal = mealPlan?.meals.find((m) => m.date === today) ?? mealPlan?.meals[0];
-  const todayRecipe = todayMeal ? findRecipeById(todayMeal.recipeId) : undefined;
+  // Tabs stay mounted — re-check on focus so the week rolls over live.
+  useFocusEffect(
+    useCallback(() => {
+      ensureMealPlan();
+    }, [ensureMealPlan])
+  );
+
+  const insight = useMemo(
+    () => computeLearningInsight({ mealRatings, acknowledgedInsightKeys }),
+    [mealRatings, acknowledgedInsightKeys]
+  );
+
+  const today = toIsoDate(new Date());
+  const todayMeal = mealPlan?.meals.find((m) => m.date === today);
+  // If today has no planned meal (e.g., viewing before the week starts), fall
+  // back to the next upcoming one but say "Next up" instead of "Tonight".
+  const nextUpcomingMeal = !todayMeal ? mealPlan?.meals.find((m) => m.date >= today) : undefined;
+  const shownMeal = todayMeal ?? nextUpcomingMeal;
+  const tonightCaption = todayMeal ? 'TONIGHT' : 'NEXT UP';
+  const todayRecipe = shownMeal ? findRecipeById(shownMeal.recipeId) : undefined;
+
+  const visibleRequests = useMemo(() => specialRequests.filter((r) => r.status !== 'done'), [specialRequests]);
 
   const lastScanAt = useMemo(() => {
     if (scans[0]?.completedAt) return scans[0].completedAt;
@@ -62,10 +97,10 @@ export default function HomeScreen() {
       contentContainerStyle={{ paddingTop: insets.top + spacing.sm, paddingBottom: spacing.xxxl, paddingHorizontal: spacing.lg, gap: spacing.lg }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View>
-          <Caption>{household.name}</Caption>
-          <Title>What's for dinner?</Title>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, gap: 2, paddingRight: spacing.sm }}>
+          <Caption color={colors.accentStrong} style={{ letterSpacing: 2, fontSize: 12 }}>{household.name.toUpperCase()}</Caption>
+          <Display>What's for{'\n'}dinner?</Display>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -85,11 +120,13 @@ export default function HomeScreen() {
             <View style={{ flex: 1, gap: spacing.sm }}>
               <BodyStrong color={colors.accentStrong}>{insight.message}</BodyStrong>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <Pressable onPress={() => dismissInsight(insight.key)} hitSlop={8}>
-                  <Caption color={colors.accentStrong} style={{ fontWeight: '700' }}>Sounds good</Caption>
-                </Pressable>
-                <Pressable onPress={() => dismissInsight(insight.key)} hitSlop={8}>
-                  <Caption color={colors.textSecondary}>No thanks</Caption>
+                <Pressable
+                  onPress={() => dismissInsight(insight.key)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss suggestion"
+                >
+                  <Caption color={colors.accentStrong}>Got it</Caption>
                 </Pressable>
               </View>
             </View>
@@ -98,22 +135,29 @@ export default function HomeScreen() {
       ) : null}
 
       <View>
-        <Caption style={{ marginBottom: spacing.xs }}>TONIGHT</Caption>
-        {todayMeal && todayRecipe ? (
+        <Caption color={colors.accentStrong} style={{ marginBottom: spacing.xs, letterSpacing: 2, fontSize: 12 }}>{tonightCaption}</Caption>
+        {shownMeal && todayRecipe ? (
           <Card elevated style={{ gap: spacing.md }}>
             <Pressable
-              onPress={() => router.push(`/recipe/${todayMeal.id}`)}
+              onPress={() => router.push(`/recipe/${shownMeal.id}`)}
               accessibilityRole="button"
               accessibilityLabel={`View recipe for ${todayRecipe.name}`}
-              style={{ flexDirection: 'row', gap: spacing.md }}
+              style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }}
             >
-              <RecipeImage emoji={todayRecipe.imageEmoji} cuisine={todayRecipe.cuisine} size={84} />
+              {/* Signature circle motif: the meal sits in a green gradient disc. */}
+              <View style={{ width: 108, height: 108, borderRadius: 54, overflow: 'hidden' }}>
+                <LinearGradient colors={[...gradients.accent]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Body style={{ fontSize: 52 }}>{todayRecipe.imageEmoji}</Body>
+                </LinearGradient>
+              </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Caption>{cuisineEmoji[todayRecipe.cuisine] ?? '🍽️'} {todayRecipe.cuisine}</Caption>
-                <Title style={{ fontSize: 22 }}>{todayRecipe.name}</Title>
+                <Caption color={colors.accentStrong} style={{ fontWeight: '600', letterSpacing: 1.5, fontSize: 12 }}>
+                  {cuisineEmoji[todayRecipe.cuisine] ?? '🍽️'} {todayRecipe.cuisine.toUpperCase()}
+                </Caption>
+                <Display style={{ fontSize: 30 }}>{todayRecipe.name}</Display>
                 <Body color={colors.textSecondary}>
                   {todayRecipe.cookTimeMinutes} min · {todayRecipe.proteinGrams}g protein
-                  {todayMeal.totalIngredientCount > 0 ? ` · Uses ${todayMeal.inventoryMatchCount} things you already have` : ''}
+                  {shownMeal.totalIngredientCount > 0 ? ` · Uses ${shownMeal.inventoryMatchCount} things you already have` : ''}
                 </Body>
               </View>
             </Pressable>
@@ -124,13 +168,13 @@ export default function HomeScreen() {
             ) : null}
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
-                <Button label="View Recipe" onPress={() => router.push(`/recipe/${todayMeal.id}`)} />
+                <Button label="View Recipe" onPress={() => router.push(`/recipe/${shownMeal.id}`)} />
               </View>
               <View style={{ flex: 1 }}>
                 <Button
                   label="Change Dinner"
                   variant="secondary"
-                  onPress={() => router.push(`/recipe/${todayMeal.id}/swap`)}
+                  onPress={() => router.push(`/recipe/${shownMeal.id}/swap`)}
                 />
               </View>
             </View>
@@ -143,7 +187,77 @@ export default function HomeScreen() {
       </View>
 
       <View>
-        <Caption style={{ marginBottom: spacing.xs }}>YOUR KITCHEN</Caption>
+        <Caption style={{ marginBottom: spacing.xs, letterSpacing: 1.5, fontSize: 12 }}>SPECIAL REQUESTS</Caption>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {visibleRequests.length === 0 ? (
+            <View style={{ padding: spacing.md, paddingBottom: 0 }}>
+              <Body color={colors.textSecondary}>Anything anyone's craving this week? Add it and we'll work it into the plan.</Body>
+            </View>
+          ) : null}
+          {visibleRequests.map((request, idx) => (
+              <View
+                key={request.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  padding: spacing.md,
+                  borderTopWidth: idx === 0 ? 0 : 1,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <BodyStrong color={colors.accentStrong}>{request.memberName.charAt(0).toUpperCase()}</BodyStrong>
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Body numberOfLines={2}>{request.text}</Body>
+                  {request.status === 'planned' && request.matchedMealDate ? (
+                    <Badge label={`Planned for ${weekdayLabel(request.matchedMealDate)}`} tone="success" />
+                  ) : (
+                    <Badge label="Still hoping" tone="warning" />
+                  )}
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Mark request from ${request.memberName} as done`}
+                  onPress={() => completeSpecialRequest(request.id)}
+                  hitSlop={8}
+                  style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.success} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove request from ${request.memberName}`}
+                  onPress={() => removeSpecialRequest(request.id)}
+                  hitSlop={8}
+                  style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="close-circle-outline" size={22} color={colors.textTertiary} />
+                </Pressable>
+              </View>
+            ))}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a special request"
+              onPress={() => router.push('/add-request')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.xs,
+                padding: spacing.md,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={colors.accentStrong} />
+              <Caption color={colors.accentStrong}>Add request</Caption>
+            </Pressable>
+        </Card>
+      </View>
+
+      <View>
+        <Caption style={{ marginBottom: spacing.xs, letterSpacing: 1.5, fontSize: 12 }}>YOUR KITCHEN</Caption>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <Pressable
             onPress={() => router.push('/(tabs)/kitchen')}
@@ -163,9 +277,9 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Scan Kitchen"
             onPress={() => router.push('/scan')}
-            style={{ backgroundColor: colors.accent, paddingVertical: 10, paddingHorizontal: 16, borderRadius: radius.pill }}
+            style={{ backgroundColor: colors.accentDeep, paddingVertical: 10, paddingHorizontal: 16, borderRadius: radius.pill }}
           >
-            <Caption color={colors.textInverse} style={{ fontWeight: '700' }}>Scan Kitchen</Caption>
+            <Caption color={colors.textInverse}>Scan Kitchen</Caption>
           </Pressable>
         </Card>
       </View>
@@ -173,10 +287,21 @@ export default function HomeScreen() {
       {upcomingMeals.length > 0 ? (
         <View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-            <Caption>THIS WEEK</Caption>
-            <Pressable onPress={() => router.push('/(tabs)/plan')} hitSlop={8}>
-              <Caption color={colors.accentStrong} style={{ fontWeight: '700' }}>See all</Caption>
-            </Pressable>
+            <Caption style={{ letterSpacing: 1.5, fontSize: 12 }}>THIS WEEK</Caption>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <Pressable
+                onPress={handleShuffleWeek}
+                hitSlop={13}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle the week for fresh meal options"
+                accessibilityHint="Rebuilds every uncooked night based on what's in your kitchen"
+              >
+                <Ionicons name="refresh" size={18} color={colors.accentStrong} />
+              </Pressable>
+              <Pressable onPress={() => router.push('/(tabs)/plan')} hitSlop={8} accessibilityRole="button" accessibilityLabel="See the full week plan">
+                <Caption color={colors.accentStrong}>See all</Caption>
+              </Pressable>
+            </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {upcomingMeals.map((meal) => {
@@ -197,7 +322,7 @@ export default function HomeScreen() {
 
       {useSoonItems.length > 0 ? (
         <View>
-          <Caption style={{ marginBottom: spacing.xs }}>USE THESE SOON</Caption>
+          <Caption style={{ marginBottom: spacing.xs, letterSpacing: 1.5, fontSize: 12 }}>USE THESE SOON</Caption>
           <Card style={{ gap: spacing.md }}>
             <Body color={colors.textSecondary}>These ingredients are worth using this week.</Body>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>

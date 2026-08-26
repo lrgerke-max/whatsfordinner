@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/useTheme';
 
 export default function TabsLayout() {
-  const { colors, fontSize, fontWeight } = useTheme();
+  const { colors, font, fontSize, fontWeight } = useTheme();
 
   return (
     <Tabs
@@ -14,13 +14,18 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarStyle: {
           backgroundColor: colors.bgElevated,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
+          borderTopColor: 'transparent',
+          borderTopWidth: 0,
           height: 88,
           paddingTop: 8,
           paddingBottom: 28,
         },
-        tabBarLabelStyle: { fontSize: fontSize.caption, fontWeight: fontWeight.semibold },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: font.semibold,
+          fontWeight: fontWeight.semibold,
+          letterSpacing: 0.2,
+        },
       }}
     >
       <Tabs.Screen
@@ -49,6 +54,13 @@ export default function TabsLayout() {
         options={{
           title: 'Grocery',
           tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'cart' : 'cart-outline'} size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="deals-tab"
+        options={{
+          title: 'Deals',
+          tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'pricetag' : 'pricetag-outline'} size={size} color={color} />,
         }}
       />
       <Tabs.Screen

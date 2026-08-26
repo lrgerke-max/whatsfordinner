@@ -24,32 +24,32 @@ a deterministic mock provider you can inspect and swap out (see
 
 ---
 
-## Quick start
+## Quick start (desktop app)
+
+Double-click **`START-WHATSFORDINNER.cmd`** (Windows) or run:
 
 ```bash
-git clone <this-repo>
-cd whatsfordinner
 npm install
-npm start
+npm run desktop
 ```
 
-Then press `i` for iOS Simulator, `a` for Android Emulator, `w` for web, or
-scan the QR code with **Expo Go** on your phone. No `.env` file, no signup,
-no API keys required — see [`.env.example`](.env.example) for what those
-variables would be *for*, whenever you connect a real backend.
+That builds once if needed, starts the local server, and opens the app in your
+browser at `http://localhost:3131`. No Expo Go, no simulator, no accounts, no
+API keys. The same server powers **Send from Phone** below — your phone needs
+to be on the same WiFi, nothing touches the internet.
 
-Requires Node 18+ and npm. On a fresh checkout with just `npm install`, the
-app opens straight into a fully-populated demo household — see **Demo
-flow** below.
+Requires Node 18+. On a fresh checkout the app opens straight into a fully
+populated demo household — see **Demo flow** below.
 
 ### Other useful commands
 
 ```bash
-npm run android   # open in a connected Android device/emulator
-npm run ios       # open in the iOS Simulator (macOS only)
-npm run web       # run in a browser (react-native-web)
-npm test          # run the business-logic test suite (Jest)
-npx tsc --noEmit  # typecheck
+npm run desktop        # build (if needed) + serve + open browser
+npm run desktop:fresh  # force a rebuild first
+npm test               # run the business-logic test suite (Jest)
+npx tsc --noEmit       # typecheck
+npm run build:web      # just produce dist-web/
+npm start              # classic expo dev server (only needed for native work)
 ```
 
 ### Desktop web app (no Expo/simulator needed)
@@ -153,7 +153,7 @@ push notifications, receipt/barcode scanning.
 app/                          Expo Router file-based routes (screens only —
                                no business logic lives here)
   onboarding/                 5-screen onboarding flow
-  (tabs)/                     Home · Kitchen · Plan · Grocery · Family
+  (tabs)/                     Home - Kitchen - Plan - Grocery - Deals - Family
   scan/                       record → review → processing → results → complete
                                (plus phone-upload.tsx, web-only)
   recipe/[id]/                full recipe + cook-along, and swap
@@ -238,7 +238,7 @@ availability, cart creation).
 npm test
 ```
 
-32 Jest tests cover the engines that make the product's promises real —
+79 Jest tests cover the engines that make the product's promises real —
 not UI snapshot tests, behavioral guarantees:
 
 - `mealPlanningEngine` — never includes an allergen-violating recipe,
@@ -329,5 +329,5 @@ handing back a blank slate for onboarding.
   scanning, voice assistant, Apple Watch/CarPlay** — out of scope for this
   MVP by design (see the product brief's explicit priority ordering);
   nothing in the current architecture blocks adding them later.
-- **Automated end-to-end/UI tests.** The 32 Jest tests cover business logic
+- **Automated end-to-end/UI tests.** The 79 Jest tests cover business logic
   exhaustively; there's no Detox/Maestro native UI test suite yet.

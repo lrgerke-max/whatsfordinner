@@ -79,8 +79,7 @@ isn't evidence of absence).
 
 ## Recipes & meal plans (`src/types/recipe.ts`, `src/types/mealPlan.ts`)
 
-- `Recipe` — static seed content (`src/data/recipes.ts`, ~20 recipes across
-  Italian/Brazilian/Mexican/American/Asian/Mediterranean). `ingredients[]`
+- `Recipe` — static seed content (src/data/recipes.ts, 1100 recipes across 14 cuisines: 20 hand-crafted signatures plus a deterministic generated long tail — see src/data/recipeGenerator.ts). `ingredients[]`
   are `RecipeIngredient` with `quantity`/`unit`/optional `optional` flag.
 - `Meal` — one planned dinner: a `date`, a `recipeId`, `status`
   (`planned`/`cooked`/`skipped`), the `inventoryMatchCount` /

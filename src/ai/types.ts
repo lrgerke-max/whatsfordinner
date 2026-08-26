@@ -55,6 +55,10 @@ export interface RecipeSwapInput {
   recipeLibrary: Recipe[];
   excludeRecipeIds: string[];
   count?: number;
+  /** Varies the alternative ranking so reshuffles offer different swaps. */
+  seed?: number;
+  /** So a recipe rated "Never Again" doesn't come back as a swap suggestion. */
+  mealRatings?: Record<string, RatingValue>;
 }
 
 export interface RecipeInput {
@@ -63,6 +67,7 @@ export interface RecipeInput {
   recipeLibrary: Recipe[];
   focusIngredientNames?: string[];
   cuisine?: string;
+  excludeRecipeIds?: string[];
 }
 
 export interface RecipeProvider {

@@ -8,7 +8,7 @@ import { useTheme } from '../../src/theme/useTheme';
 import { useScanFlowStore } from '../../src/state/scanFlowStore';
 import { useKitchenMemoryStore } from '../../src/state/store';
 import { kitchenScanProcessor, PROCESSING_STEPS } from '../../src/ai';
-import { Body, Title } from '../../src/components/Typography';
+import { Body, BodyStrong, Title } from '../../src/components/Typography';
 import { Button } from '../../src/components/Button';
 import { EmptyState } from '../../src/components/EmptyState';
 
@@ -29,7 +29,13 @@ export default function ScanProcessingScreen() {
   const inventory = useKitchenMemoryStore((s) => s.inventory);
 
   useEffect(() => {
-    if (hasStarted.current || !videoUri) return;
+    // If state was lost (e.g., a page refresh mid-processing), the ephemeral
+    // scan store has no video — fail fast instead of animating forever.
+    if (hasStarted.current) return;
+    if (!videoUri) {
+      setFailed(true);
+      return;
+    }
     hasStarted.current = true;
     setStatus('processing');
 
@@ -37,23 +43,43 @@ export default function ScanProcessingScreen() {
       setStepIndex((i) => Math.min(i + 1, PROCESSING_STEPS.length - 1));
     }, STEP_INTERVAL_MS);
 
+    let navTimer: ReturnType<typeof setTimeout> | undefined;
+    let failedPermanently = false;
+    const fail = () => {
+      failedPermanently = true;
+      clearInterval(stepTimer);
+      clearTimeout(watchdog);
+      setFailed(true);
+    };
+    // A late success after the watchdog fired must NOT navigate — the user is
+    // already looking at the failure screen.
+    const watchdog = setTimeout(fail, 45000);
+    const clearAll = () => {
+      clearInterval(stepTimer);
+      clearTimeout(watchdog);
+      if (navTimer) clearTimeout(navTimer);
+    };
+
     kitchenScanProcessor
       .analyze({ uri: videoUri, durationSeconds, isDemoVideo }, inventory)
       .then((analysis) => {
+        if (failedPermanently) return;
         const minTime = PROCESSING_STEPS.length * STEP_INTERVAL_MS;
-        setTimeout(() => {
-          clearInterval(stepTimer);
+        navTimer = setTimeout(() => {
+          if (failedPermanently) return;
+          clearAll();
           setAnalysis(analysis);
           setStatus('reviewing-results');
           router.replace('/scan/results');
         }, minTime);
       })
-      .catch(() => {
-        clearInterval(stepTimer);
+      .catch((err) => {
+        clearAll();
+        console.error('Kitchen scan failed:', err);
         setFailed(true);
       });
 
-    return () => clearInterval(stepTimer);
+    return clearAll;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoUri]);
 
@@ -74,7 +100,7 @@ export default function ScanProcessingScreen() {
         <PulsingIcon />
         <Title style={{ textAlign: 'center' }}>Remembering your kitchen…</Title>
         <Body color={colors.textSecondary} style={{ textAlign: 'center' }}>
-          This usually takes about a minute.
+          A few seconds with the demo kitchen — about a minute with a real one.
         </Body>
       </View>
 
@@ -88,7 +114,7 @@ export default function ScanProcessingScreen() {
 }
 
 function StepRow({ label, state }: { label: string; state: 'done' | 'active' | 'pending' }) {
-  const { colors, spacing, fontSize } = useTheme();
+  const { colors, spacing } = useTheme();
   const opacity = useRef(new Animated.Value(state === 'pending' ? 0.35 : 1)).current;
 
   useEffect(() => {
@@ -109,7 +135,7 @@ function StepRow({ label, state }: { label: string; state: 'done' | 'active' | '
       >
         {state === 'done' ? <Ionicons name="checkmark" size={14} color={colors.textInverse} /> : null}
       </View>
-      <Body style={{ fontSize: fontSize.body, fontWeight: state === 'active' ? '700' : '400' }}>{label}</Body>
+      {state === 'active' ? <BodyStrong>{label}</BodyStrong> : <Body>{label}</Body>}
     </Animated.View>
   );
 }

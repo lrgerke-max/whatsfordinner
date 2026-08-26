@@ -30,7 +30,13 @@ export function TagInput({ values, onChange, placeholder }: TagInputProps) {
       {values.length > 0 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
           {values.map((v) => (
-            <Chip key={v} label={`${v}  ✕`} selected onPress={() => onChange(values.filter((x) => x !== v))} />
+            <Chip
+              key={v}
+              label={`${v}  ✕`}
+              accessibilityLabel={`Remove ${v}`}
+              selected
+              onPress={() => onChange(values.filter((x) => x !== v))}
+            />
           ))}
         </View>
       ) : null}

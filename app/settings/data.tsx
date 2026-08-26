@@ -18,10 +18,18 @@ export default function DataScreen() {
   const inventory = useKitchenMemoryStore((s) => s.inventory);
   const mealPlan = useKitchenMemoryStore((s) => s.mealPlan);
   const groceryList = useKitchenMemoryStore((s) => s.groceryList);
+  const specialRequests = useKitchenMemoryStore((s) => s.specialRequests);
+  const mealRatings = useKitchenMemoryStore((s) => s.mealRatings);
+  const pastMeals = useKitchenMemoryStore((s) => s.pastMeals);
+  const hasHydrated = useKitchenMemoryStore((s) => s.hasHydrated);
   const resetAllData = useKitchenMemoryStore((s) => s.resetAllData);
 
   const handleExport = async () => {
-    const payload = JSON.stringify({ household, inventory, mealPlan, groceryList, exportedAt: new Date().toISOString() }, null, 2);
+    const payload = JSON.stringify(
+      { household, inventory, mealPlan, groceryList, specialRequests, mealRatings, pastMeals, exportedAt: new Date().toISOString(), schema: 2 },
+      null,
+      2
+    );
     try {
       await Share.share({ message: payload, title: 'Kitchen Memory data export' });
     } catch {
@@ -30,6 +38,9 @@ export default function DataScreen() {
   };
 
   const handleDelete = () => {
+    // Deleting before hydration finishes would be silently undone when the
+    // persisted blob lands afterward.
+    if (!hasHydrated) return;
     confirmAction(
       'Delete all household data?',
       'This removes your household, kitchen memory, meal plans, and grocery lists from this device. This cannot be undone.',
@@ -59,7 +70,7 @@ export default function DataScreen() {
         <Card style={{ gap: spacing.sm, borderColor: colors.dangerSoft }}>
           <BodyStrong color={colors.danger}>Delete everything</BodyStrong>
           <Body color={colors.textSecondary}>Permanently remove your household, kitchen memory, and meal history from this device.</Body>
-          <Button label="Delete All Data" variant="danger" onPress={handleDelete} />
+          <Button label="Delete All Data" variant="danger" onPress={handleDelete} disabled={!hasHydrated} />
         </Card>
       </ScrollView>
     </View>

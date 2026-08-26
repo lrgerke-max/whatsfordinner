@@ -18,7 +18,10 @@ interface ChipGroupProps {
 export function ChipGroup({ options, selected, onToggle }: ChipGroupProps) {
   const { spacing } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+    <View
+      accessibilityLabel={options.length > 0 ? `Options, ${selected.length} of ${options.length} selected` : undefined}
+      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}
+    >
       {options.map((opt) => (
         <Chip key={opt.key} label={opt.label} emoji={opt.emoji} selected={selected.includes(opt.key)} onPress={() => onToggle(opt.key)} />
       ))}

@@ -7,10 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "kitchenmemory",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#FBF7F2"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kitchenmemory.app",
@@ -29,7 +25,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.kitchenmemory.app",
-      "permissions": ["CAMERA", "RECORD_AUDIO", "READ_MEDIA_VIDEO"]
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_MEDIA_VIDEO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -59,7 +59,8 @@
           "image": "./assets/icon.png",
           "imageWidth": 120
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

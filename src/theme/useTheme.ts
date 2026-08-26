@@ -1,11 +1,12 @@
 import { useColorScheme } from 'react-native';
-import { darkColors, lightColors } from './colors';
-import { fontSize, fontWeight, radius, shadow, spacing } from './tokens';
+import { brandColors, deepColors } from './colors';
+import { font, fontSize, fontWeight, radius, shadow, spacing } from './tokens';
 
 export function useTheme() {
   const scheme = useColorScheme();
-  const colors = scheme === 'dark' ? darkColors : lightColors;
-  return { colors, spacing, radius, fontSize, fontWeight, shadow, scheme: scheme ?? 'light' };
+  // One identity, two depths: the app is dark-editorial in both schemes.
+  const colors = scheme === 'dark' ? deepColors : brandColors;
+  return { colors, font, spacing, radius, fontSize, fontWeight, shadow, scheme: scheme ?? 'light' };
 }
 
 export type Theme = ReturnType<typeof useTheme>;

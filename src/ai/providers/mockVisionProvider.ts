@@ -44,7 +44,13 @@ export class MockVisionProvider implements VisionProvider {
 
   private simulateGenericScan(video: VideoInput, previousInventory: InventoryItem[]): KitchenAnalysis {
     const rand = seededRandom(video.uri + video.durationSeconds);
-    const itemCount = Math.max(6, Math.min(GENERIC_ITEM_POOL.length, Math.round((video.durationSeconds / 180) * GENERIC_ITEM_POOL.length)));
+    // Longer tours see more: a quick fridge glance (~30s) finds the obvious
+    // items; a thorough 2-3 minute walkthrough reads enough labels to fill
+    // out the whole pantry. Generous curve so effort is rewarded.
+    const itemCount = Math.max(
+      8,
+      Math.min(GENERIC_ITEM_POOL.length, Math.round((video.durationSeconds / 150) * GENERIC_ITEM_POOL.length))
+    );
 
     const shuffled = [...GENERIC_ITEM_POOL].sort(() => rand() - 0.5).slice(0, itemCount);
 
@@ -71,12 +77,14 @@ export class MockVisionProvider implements VisionProvider {
       .map((i) => i.id);
 
     const areasObserved = ALL_AREAS.filter(() => rand() > 0.15);
+    const minutes = Math.max(1, Math.round(video.durationSeconds / 60));
+    const labelReads = Math.max(1, Math.round(itemCount / 2));
 
     return {
       detectedItems,
       likelyRemovedItemIds,
       areasObserved: areasObserved.length > 0 ? areasObserved : ALL_AREAS.slice(0, 2),
-      summary: `Reviewed about ${Math.round(video.durationSeconds / 60)} minute(s) of kitchen footage across ${areasObserved.length || 2} area(s).`,
+      summary: `Reviewed about ${minutes} minute${minutes === 1 ? '' : 's'} of footage across ${areasObserved.length || 2} area(s) — spotted ${detectedItems.length} things, close enough to read ${labelReads} package label${labelReads === 1 ? '' : 's'}.`,
     };
   }
 }

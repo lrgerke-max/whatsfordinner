@@ -39,16 +39,20 @@ function aggregateNeeds(meals: MealPlan['meals'], recipesById: Map<string, Recip
     if (!recipe) continue;
     for (const ingredient of recipe.ingredients) {
       if (ingredient.optional) continue;
-      const key = `${normalizeIngredientName(ingredient.name)}::${ingredient.unit}`;
+      const unit = ingredient.unit.toLowerCase().trim() || 'each';
+      // Emoji-only names normalize to '' — fall back to the raw name so two
+      // different emoji ingredients don't merge into one mystery row.
+      const normalized = normalizeIngredientName(ingredient.name) || ingredient.name.toLowerCase().trim();
+      const key = `${normalized}::${unit}`;
       const existing = byKey.get(key);
       if (existing) {
-        existing.quantity += ingredient.quantity;
+        existing.quantity += Number.isFinite(ingredient.quantity) ? ingredient.quantity : 0;
         existing.recipeIds.add(recipe.id);
       } else {
         byKey.set(key, {
           name: ingredient.name,
-          unit: ingredient.unit,
-          quantity: ingredient.quantity,
+          unit,
+          quantity: Number.isFinite(ingredient.quantity) ? ingredient.quantity : 0,
           recipeIds: new Set([recipe.id]),
         });
       }
@@ -88,8 +92,12 @@ export function generateGroceryList(mealPlan: MealPlan, recipeLibrary: Recipe[],
 
   const items: GroceryItem[] = [];
   for (const need of needs) {
+    // Corrupted quantities (NaN/Infinity/negative) must never become line
+    // items — they'd poison every total downstream.
+    if (!Number.isFinite(need.quantity)) continue;
+    if (need.quantity <= 0) continue;
     const buyQuantity = roundQuantity(amountToBuy(need, inventory), need.unit);
-    if (buyQuantity <= 0) continue;
+    if (!Number.isFinite(buyQuantity) || buyQuantity <= 0) continue;
 
     const recipeNames = Array.from(need.recipeIds)
       .map((id) => recipesById.get(id)?.name)

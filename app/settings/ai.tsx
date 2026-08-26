@@ -25,11 +25,11 @@ export default function AiSettingsScreen() {
         <Card style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <BodyStrong>Kitchen scanning</BodyStrong>
-            <Badge label="Demo mode" tone="accent" />
+            <Badge label="Preview scanner" tone="accent" />
           </View>
           <Body color={colors.textSecondary}>
-            This build ships with a self-contained demo scanner so the whole app works with no API keys. Connecting a real
-            multimodal model is a drop-in swap — see the AI provider architecture in the project README.
+            This build ships with a self-contained preview scanner so the whole app works with no setup. A production
+            multimodal model swaps in behind the same interface — no changes to how the app feels.
           </Body>
         </Card>
         <Card style={{ gap: spacing.sm }}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle, StyleProp } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../theme/useTheme';
 
@@ -16,7 +16,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
   haptics?: boolean;
 }
@@ -35,10 +35,11 @@ export function Button({
   accessibilityHint,
   haptics = true,
 }: ButtonProps) {
-  const { colors, radius, fontSize, fontWeight, spacing } = useTheme();
+  const { colors, font, radius, fontSize, fontWeight, spacing } = useTheme();
 
+  // accentDeep keeps primary-button labels above 4.5:1 against cream text.
   const backgroundColor =
-    variant === 'primary' ? colors.accent : variant === 'danger' ? colors.danger : variant === 'secondary' ? colors.bgSubtle : 'transparent';
+    variant === 'primary' ? colors.accentDeep : variant === 'danger' ? colors.danger : variant === 'secondary' ? colors.bgSubtle : 'transparent';
   const textColor = variant === 'primary' || variant === 'danger' ? colors.textInverse : colors.textPrimary;
   const borderColor = variant === 'ghost' ? colors.border : 'transparent';
 
@@ -53,7 +54,9 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || loading }}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      // While loading the label unmounts — keep the name for screen readers.
+      accessibilityLabel={loading ? label : undefined}
       accessibilityHint={accessibilityHint}
       onPress={handlePress}
       disabled={disabled || loading}
@@ -79,7 +82,7 @@ export function Button({
         <View style={styles.content}>
           {icon}
           <Text
-            style={{ color: textColor, fontSize: fs, fontWeight: fontWeight.semibold }}
+            style={{ color: textColor, fontSize: fs, fontFamily: font.semibold, fontWeight: fontWeight.semibold, letterSpacing: 0.2 }}
             maxFontSizeMultiplier={1.6}
           >
             {label}

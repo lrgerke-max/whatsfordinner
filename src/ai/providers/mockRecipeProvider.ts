@@ -1,5 +1,6 @@
 import { generateSwapAlternatives, scoreRecipe } from '../../engines/mealPlanningEngine';
 import { isRecipeSafeForHousehold } from '../../engines/dietaryRules';
+import { createInventoryMatcher } from '../../engines/inventoryMatch';
 import { DEFAULT_SCORING_WEIGHTS } from '../../types/mealPlan';
 import { Recipe } from '../../types/recipe';
 import { RecipeInput, RecipeProvider, RecipeSwapInput } from '../types';
@@ -13,12 +14,17 @@ import { RecipeInput, RecipeProvider, RecipeSwapInput } from '../types';
 export class MockRecipeProvider implements RecipeProvider {
   async generateRecipe(input: RecipeInput): Promise<Recipe> {
     await delay(250);
-    const eligible = input.recipeLibrary.filter(
+    const excludeIds = new Set(input.excludeRecipeIds ?? []);
+    const withoutExcluded = input.recipeLibrary.filter((r) => !excludeIds.has(r.id));
+    const eligible = withoutExcluded.filter(
       (r) => isRecipeSafeForHousehold(r, input.household) && (!input.cuisine || r.cuisine === input.cuisine)
     );
-    const pool = eligible.length > 0 ? eligible : input.recipeLibrary;
+    const pool = eligible.length > 0 ? eligible : withoutExcluded.length > 0 ? withoutExcluded : input.recipeLibrary;
 
     const focus = input.focusIngredientNames ?? [];
+    // Memoized inventory matching — scoring the full library re-checks the
+    // same ingredients thousands of times otherwise.
+    const matcher = createInventoryMatcher(input.inventory);
     const scored = pool.map((recipe) => {
       const focusScore =
         focus.length > 0
@@ -30,6 +36,7 @@ export class MockRecipeProvider implements RecipeProvider {
         inventory: input.inventory,
         recentCuisines: [],
         weights: DEFAULT_SCORING_WEIGHTS,
+        matcher,
       }).total;
       return { recipe, score: base + focusScore * 0.5 };
     });
@@ -45,8 +52,10 @@ export class MockRecipeProvider implements RecipeProvider {
       inventory: input.inventory,
       recipeLibrary: input.recipeLibrary,
       pastMeals: [],
+      mealRatings: input.mealRatings,
       excludeRecipeIds: input.excludeRecipeIds,
       count: input.count,
+      seed: input.seed,
     });
   }
 }

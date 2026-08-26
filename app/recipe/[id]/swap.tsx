@@ -13,6 +13,7 @@ import { cuisineEmoji } from '../../../src/theme/colors';
 import { Card } from '../../../src/components/Card';
 import { RecipeImage } from '../../../src/components/RecipeImage';
 import { Body, BodyStrong, Caption, Title } from '../../../src/components/Typography';
+import { EmptyState } from '../../../src/components/EmptyState';
 import { Recipe } from '../../../src/types/recipe';
 
 export default function SwapScreen() {
@@ -22,6 +23,8 @@ export default function SwapScreen() {
   const household = useKitchenMemoryStore((s) => s.household);
   const inventory = useKitchenMemoryStore((s) => s.inventory);
   const mealPlan = useKitchenMemoryStore((s) => s.mealPlan);
+  const planSeed = useKitchenMemoryStore((s) => s.planSeed);
+  const mealRatings = useKitchenMemoryStore((s) => s.mealRatings);
   const swapMealTo = useKitchenMemoryStore((s) => s.swapMealTo);
 
   const meal = mealPlan?.meals.find((m) => m.id === id);
@@ -40,14 +43,24 @@ export default function SwapScreen() {
         recipeLibrary: RECIPE_LIBRARY,
         excludeRecipeIds: excludeIds,
         count: 4,
+        seed: planSeed,
+        mealRatings,
       })
-      .then(setAlternatives);
+      .then(setAlternatives)
+      .catch(() => setAlternatives([])); // never leave the screen loading forever
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meal?.id]);
 
   if (!meal || !currentRecipe) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top, padding: spacing.lg }}>
-        <Body>This meal isn't on your plan anymore.</Body>
+        <EmptyState
+          emoji="🍽️"
+          title="This meal isn't on your plan anymore"
+          message="The plan may have been refreshed. Pick another night to swap, or rebuild the week."
+          actionLabel="Back to my week"
+          onAction={() => router.replace('/(tabs)/plan')}
+        />
       </View>
     );
   }
@@ -85,7 +98,7 @@ export default function SwapScreen() {
                   <View style={{ flex: 1, gap: 3 }}>
                     <BodyStrong>{recipe.name}</BodyStrong>
                     <Caption>{cuisineEmoji[recipe.cuisine] ?? '🍽️'} {recipe.cuisine} · {recipe.cookTimeMinutes} min</Caption>
-                    <Caption color={colors.success} style={{ fontWeight: '700' }}>
+                    <Caption color={colors.success}>
                       Uses {match.matchedCount} of {match.requiredCount} things you have
                     </Caption>
                   </View>

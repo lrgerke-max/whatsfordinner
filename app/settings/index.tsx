@@ -2,9 +2,11 @@ import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { confirmAction } from '../../src/utils/confirm';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../src/theme/useTheme';
+import { useKitchenMemoryStore } from '../../src/state/store';
 import { Card } from '../../src/components/Card';
 import { Body, Caption, Title } from '../../src/components/Typography';
 
@@ -17,8 +19,30 @@ interface Row {
 export default function SettingsScreen() {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
+  const loadDemoData = useKitchenMemoryStore((s) => s.loadDemoData);
+
+  // Presenter recovery: restore the seeded demo household. Still confirmed —
+  // it replaces real household data, and a mis-tap must not wipe a week.
+  const resetDemoHousehold = () => {
+    confirmAction(
+      'Reset to the demo household?',
+      'This replaces your real household, kitchen, and meal plan with the demo data. It cannot be undone.',
+      'Reset to demo',
+      () => {
+        loadDemoData();
+        router.replace('/(tabs)/home');
+      },
+      true
+    );
+  };
 
   const sections: { title: string; rows: Row[] }[] = [
+    {
+      title: 'Demo',
+      rows: [
+        { icon: 'refresh-outline', label: 'Reset Demo Household', onPress: resetDemoHousehold },
+      ],
+    },
     {
       title: 'Household',
       rows: [
@@ -53,7 +77,7 @@ export default function SettingsScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl }}>
         {sections.map((section) => (
           <View key={section.title} style={{ gap: spacing.sm }}>
-            <Caption>{section.title.toUpperCase()}</Caption>
+            <Caption accessibilityRole="header">{section.title.toUpperCase()}</Caption>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {section.rows.map((row, idx) => (
                 <Pressable

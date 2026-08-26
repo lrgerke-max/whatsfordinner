@@ -7,18 +7,19 @@ type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
 
 export function Badge({ label, tone = 'neutral' }: { label: string; tone?: Tone }) {
   const { colors, radius, spacing } = useTheme();
+  // Strong foregrounds keep small badge text at WCAG AA contrast on soft bg.
   const toneMap: Record<Tone, { bg: string; fg: string }> = {
     neutral: { bg: colors.bgSubtle, fg: colors.textSecondary },
-    success: { bg: colors.successSoft, fg: colors.success },
-    warning: { bg: colors.warningSoft, fg: colors.warning },
-    danger: { bg: colors.dangerSoft, fg: colors.danger },
-    info: { bg: colors.infoSoft, fg: colors.info },
+    success: { bg: colors.successSoft, fg: colors.successStrong },
+    warning: { bg: colors.warningSoft, fg: colors.warningStrong },
+    danger: { bg: colors.dangerSoft, fg: colors.dangerStrong },
+    info: { bg: colors.infoSoft, fg: colors.infoStrong },
     accent: { bg: colors.accentSoft, fg: colors.accentStrong },
   };
   const { bg, fg } = toneMap[tone];
   return (
     <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingVertical: 4, paddingHorizontal: spacing.sm, alignSelf: 'flex-start' }}>
-      <Caption color={fg} style={{ fontWeight: '700' }}>
+      <Caption color={fg}>
         {label}
       </Caption>
     </View>

@@ -24,7 +24,9 @@ export default function ScanCompleteScreen() {
   }, [scale, opacity]);
 
   const parts: string[] = [];
-  if (scan) {
+  if (scan?.completedAt && Date.now() - new Date(scan.completedAt).getTime() < 10 * 60 * 1000) {
+    // Only narrate counts for a scan that just happened — a stale deep link
+    // shouldn't announce last week's numbers as if they were this session's.
     if (scan.newItemCount > 0) parts.push(`${scan.newItemCount} new`);
     if (scan.updatedItemCount > 0) parts.push(`${scan.updatedItemCount} updated`);
     if (scan.removedItemCount > 0) parts.push(`${scan.removedItemCount} used up`);
@@ -51,8 +53,10 @@ export default function ScanCompleteScreen() {
       <Body color={colors.textSecondary} style={{ textAlign: 'center' }}>We've also refreshed this week's meal plan and grocery list.</Body>
 
       <View style={{ width: '100%', gap: spacing.sm, marginTop: spacing.md }}>
-        <Button label="See This Week's Meals" onPress={() => router.replace('/(tabs)/plan')} />
-        <Button label="Back to Kitchen" variant="secondary" onPress={() => router.replace('/(tabs)/kitchen')} />
+        {/* dismissAll first: leaving the scan flow must unwind its history, or
+            browser Back re-enters the finished flow mid-stack. */}
+        <Button label="See This Week's Meals" onPress={() => { router.dismissAll(); router.replace('/(tabs)/plan'); }} />
+        <Button label="Back to Kitchen" variant="secondary" onPress={() => { router.dismissAll(); router.replace('/(tabs)/kitchen'); }} />
       </View>
     </View>
   );

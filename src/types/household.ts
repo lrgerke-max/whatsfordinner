@@ -60,11 +60,14 @@ export const CUISINE_OPTIONS = [
   'Brazilian',
   'Mexican',
   'Asian',
+  'Chinese',
+  'Japanese',
+  'Korean',
+  'Thai',
   'Mediterranean',
   'Indian',
   'French',
   'Greek',
-  'Korean',
   'MiddleEastern',
 ] as const;
 

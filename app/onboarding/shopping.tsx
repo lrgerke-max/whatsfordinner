@@ -18,6 +18,7 @@ export default function OnboardingShoppingScreen() {
   const draft = useOnboardingStore((s) => s.draft);
   const update = useOnboardingStore((s) => s.update);
   const completeOnboarding = useKitchenMemoryStore((s) => s.completeOnboarding);
+  const householdOnboarded = useKitchenMemoryStore((s) => s.household.onboardingCompleted);
   const [customStore, setCustomStore] = useState('');
 
   const toggleStore = (store: string) => {
@@ -35,7 +36,16 @@ export default function OnboardingShoppingScreen() {
   const allStores = Array.from(new Set([...COMMON_GROCERY_STORES, ...draft.shopping.preferredStores]));
 
   const handleFinish = () => {
+    // Browser Back from Home re-lands here with a stale persisted draft;
+    // completing again would clobber the live household with it.
+    if (householdOnboarded) {
+      router.dismissAll();
+      router.replace('/(tabs)/home');
+      return;
+    }
     completeOnboarding(draft);
+    // Unwind the onboarding history — Back from Home must not re-enter it.
+    router.dismissAll();
     router.replace('/(tabs)/home');
   };
 
